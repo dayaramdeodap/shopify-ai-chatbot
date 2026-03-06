@@ -1,4 +1,5 @@
 FROM node:18-alpine
+# bust cache
 RUN apk add --no-cache openssl
 
 EXPOSE 3000
