@@ -40,9 +40,15 @@ export async function loader({ request }) {
 }
 
 /**
- * React Router action function for handling POST requests
+ * React Router action function for handling POST and OPTIONS requests
  */
 export async function action({ request }) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: getCorsHeaders(request)
+    });
+  }
   return handleChatRequest(request);
 }
 
