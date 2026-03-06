@@ -150,6 +150,21 @@
       },
 
       /**
+       * Create a bot avatar element for message rows
+       */
+      createMsgAvatar: function() {
+        const avatarEl = document.createElement('div');
+        avatarEl.classList.add('shop-ai-msg-avatar');
+        const avatarSrc = window.shopChatConfig?.botAvatar;
+        if (avatarSrc) {
+          avatarEl.innerHTML = `<img src="${avatarSrc}" alt="Bot">`;
+        } else {
+          avatarEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>`;
+        }
+        return avatarEl;
+      },
+
+      /**
        * Scroll messages container to bottom
        */
       scrollToBottom: function() {
@@ -242,6 +257,10 @@
         // Clear input
         chatInput.value = '';
 
+        // Hide quick actions after first message
+        const quickActions = document.getElementById('shop-ai-quick-actions');
+        if (quickActions) quickActions.style.display = 'none';
+
         // Show typing indicator
         ShopAIChat.UI.showTypingIndicator();
 
@@ -268,11 +287,16 @@
         if (sender === 'assistant') {
           messageElement.dataset.rawText = text;
           ShopAIChat.Formatting.formatMessageContent(messageElement);
+          const msgRow = document.createElement('div');
+          msgRow.classList.add('shop-ai-msg-row');
+          msgRow.appendChild(ShopAIChat.UI.createMsgAvatar());
+          msgRow.appendChild(messageElement);
+          messagesContainer.appendChild(msgRow);
         } else {
           messageElement.textContent = text;
+          messagesContainer.appendChild(messageElement);
         }
 
-        messagesContainer.appendChild(messageElement);
         ShopAIChat.UI.scrollToBottom();
 
         return messageElement;
@@ -481,7 +505,7 @@
             prompt_type: promptType
           });
 
-          const streamUrl = 'https://localhost:3458/chat';
+          const streamUrl = (window.shopChatConfig?.chatEndpoint || 'https://localhost:3000') + '/chat';
           const shopId = window.shopId;
 
           const response = await fetch(streamUrl, {
@@ -498,12 +522,16 @@
           const decoder = new TextDecoder();
           let buffer = '';
 
-          // Create initial message element
+          // Create initial message element wrapped with avatar
           let messageElement = document.createElement('div');
           messageElement.classList.add('shop-ai-message', 'assistant');
           messageElement.textContent = '';
           messageElement.dataset.rawText = '';
-          messagesContainer.appendChild(messageElement);
+          const streamMsgRow = document.createElement('div');
+          streamMsgRow.classList.add('shop-ai-msg-row');
+          streamMsgRow.appendChild(ShopAIChat.UI.createMsgAvatar());
+          streamMsgRow.appendChild(messageElement);
+          messagesContainer.appendChild(streamMsgRow);
           currentMessageElement = messageElement;
 
           // Process the stream
@@ -630,7 +658,7 @@
           messagesContainer.appendChild(loadingMessage);
 
           // Fetch history from the server
-          const historyUrl = `https://localhost:3458/chat?history=true&conversation_id=${encodeURIComponent(conversationId)}`;
+          const historyUrl = `${window.shopChatConfig?.chatEndpoint || 'https://localhost:3000'}/chat?history=true&conversation_id=${encodeURIComponent(conversationId)}`;
           console.log('Fetching history from:', historyUrl);
 
           const response = await fetch(historyUrl, {
@@ -779,7 +807,7 @@
           attemptCount++;
 
           try {
-            const tokenUrl = 'https://localhost:3458/auth/token-status?conversation_id=' +
+            const tokenUrl = (window.shopChatConfig?.chatEndpoint || 'https://localhost:3000') + '/auth/token-status?conversation_id=' +
               encodeURIComponent(conversationId);
             const response = await fetch(tokenUrl);
 
@@ -917,10 +945,27 @@
       if (conversationId) {
         // Fetch conversation history
         this.API.fetchChatHistory(conversationId, this.UI.elements.messagesContainer);
+        // Hide quick actions if resuming a conversation
+        const quickActions = document.getElementById('shop-ai-quick-actions');
+        if (quickActions) quickActions.style.display = 'none';
       } else {
         // No previous conversation, show welcome message
         const welcomeMessage = window.shopChatConfig?.welcomeMessage || "👋 Hi there! How can I help you today?";
         this.Message.add(welcomeMessage, 'assistant', this.UI.elements.messagesContainer);
+      }
+
+      // Quick action button click handlers
+      const quickActionsEl = document.getElementById('shop-ai-quick-actions');
+      if (quickActionsEl) {
+        quickActionsEl.querySelectorAll('.shop-ai-quick-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const input = this.UI.elements.chatInput;
+            if (input) {
+              input.value = btn.textContent.trim();
+              this.Message.send(input, this.UI.elements.messagesContainer);
+            }
+          });
+        });
       }
     }
   };

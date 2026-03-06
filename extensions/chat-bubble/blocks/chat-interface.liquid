@@ -1,32 +1,77 @@
 {{ 'chat.css' | asset_url | stylesheet_tag }}
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
+<style>
+  :root { --accent-color: {{ block.settings.chat_bubble_color }}; }
+</style>
+
 <div class="shop-ai-chat-container">
-  <div class="shop-ai-chat-bubble" style="background-color: {{ block.settings.chat_bubble_color }}">
+  <div class="shop-ai-chat-bubble">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
   </div>
 
   <div class="shop-ai-chat-window">
+
     <div class="shop-ai-chat-header">
-      <div>{{ 'chat.title' | t }}</div>
-      <button class="shop-ai-chat-close">✕</button>
+      <div class="shop-ai-header-left">
+        <div class="shop-ai-header-avatar">
+          {% if block.settings.bot_avatar != blank %}
+            <img src="{{ block.settings.bot_avatar }}" alt="{{ block.settings.bot_name | default: 'Assistant' }}" width="46" height="46">
+          {% else %}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+            </svg>
+          {% endif %}
+        </div>
+        <div class="shop-ai-header-info">
+          <span class="shop-ai-header-title">{{ block.settings.bot_name | default: 'AI Chat Assistant' }}</span>
+          <span class="shop-ai-header-status">
+            <span class="shop-ai-status-dot"></span>Online
+          </span>
+        </div>
+      </div>
+      <div class="shop-ai-header-right">
+        <button class="shop-ai-chat-close" aria-label="Close chat">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
     </div>
 
-    <div class="shop-ai-chat-messages">
-      <!-- Messages will be added here by JavaScript -->
+    <div class="shop-ai-chat-messages"></div>
+
+    <div class="shop-ai-quick-actions" id="shop-ai-quick-actions">
+      {% if block.settings.quick_btn_1 != blank %}
+        <button class="shop-ai-quick-btn">{{ block.settings.quick_btn_1 }}</button>
+      {% endif %}
+      {% if block.settings.quick_btn_2 != blank %}
+        <button class="shop-ai-quick-btn">{{ block.settings.quick_btn_2 }}</button>
+      {% endif %}
+      {% if block.settings.quick_btn_3 != blank %}
+        <button class="shop-ai-quick-btn">{{ block.settings.quick_btn_3 }}</button>
+      {% endif %}
+      {% if block.settings.quick_btn_4 != blank %}
+        <button class="shop-ai-quick-btn">{{ block.settings.quick_btn_4 }}</button>
+      {% endif %}
     </div>
 
     <div class="shop-ai-chat-input">
       <input type="text" placeholder="{{ 'chat.inputPlaceholder' | t }}">
-      <button class="shop-ai-chat-send">
+      <button class="shop-ai-chat-send" aria-label="Send message">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"></line>
           <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
         </svg>
       </button>
     </div>
+
+    <div class="shop-ai-chat-footer">
+      Powered by <strong>{{ block.settings.bot_name | default: 'AI' }}</strong>
+    </div>
+
   </div>
 </div>
 
@@ -34,7 +79,10 @@
 <script>
   window.shopChatConfig = {
     promptType: {{ block.settings.system_prompt | json }},
-    welcomeMessage: {{ block.settings.welcome_message | json }}
+    welcomeMessage: {{ block.settings.welcome_message | json }},
+    chatEndpoint: {{ block.settings.chat_endpoint | json }},
+    botAvatar: {{ block.settings.bot_avatar | json }},
+    botName: {{ block.settings.bot_name | default: 'AI Chat Assistant' | json }}
   };
   window.shopId = {{ shop.id }};
 </script>
@@ -45,30 +93,66 @@
   "target": "body",
   "settings": [
     {
+      "type": "text",
+      "id": "chat_endpoint",
+      "label": "Chat Backend URL",
+      "info": "The URL of your app backend (e.g. https://your-tunnel.trycloudflare.com)"
+    },
+    {
+      "type": "text",
+      "id": "bot_name",
+      "label": "Bot Name",
+      "default": "AI Chat Assistant"
+    },
+    {
+      "type": "text",
+      "id": "bot_avatar",
+      "label": "Bot Avatar URL",
+      "info": "Full URL of the bot avatar image"
+    },
+    {
       "type": "color",
       "id": "chat_bubble_color",
-      "label": "Chat Bubble Color",
-      "default": "#5046e4"
+      "label": "Accent Color",
+      "default": "#e53e3e"
     },
     {
       "type": "text",
       "id": "welcome_message",
       "label": "Welcome Message",
-      "default": "👋 Hi there! How can I help you today?"
+      "default": "Hi there! How can I assist you today? \ud83d\ude0a"
+    },
+    {
+      "type": "text",
+      "id": "quick_btn_1",
+      "label": "Quick Action Button 1",
+      "default": "Best selling"
+    },
+    {
+      "type": "text",
+      "id": "quick_btn_2",
+      "label": "Quick Action Button 2",
+      "default": "New Arrivals"
+    },
+    {
+      "type": "text",
+      "id": "quick_btn_3",
+      "label": "Quick Action Button 3",
+      "default": "Track Order"
+    },
+    {
+      "type": "text",
+      "id": "quick_btn_4",
+      "label": "Quick Action Button 4",
+      "default": "Woman's special"
     },
     {
       "type": "select",
       "id": "system_prompt",
       "label": "System Prompt",
       "options": [
-        {
-          "value": "standardAssistant",
-          "label": "Standard Assistant"
-        },
-        {
-          "value": "enthusiasticAssistant",
-          "label": "Enthusiastic Assistant"
-        }
+        { "value": "standardAssistant", "label": "Standard Assistant" },
+        { "value": "enthusiasticAssistant", "label": "Enthusiastic Assistant" }
       ],
       "default": "standardAssistant"
     }
